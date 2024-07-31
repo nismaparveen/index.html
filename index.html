@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wikipedia Clone</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+        }
+
+        #search-form {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        #search-input {
+            font-size: 1.2rem;
+            padding: 0.5rem 1rem;
+            margin-right: 1rem;
+            border: 2px solid #ccc;
+            border-radius: 0.25rem;
+            flex-grow: 1;
+        }
+
+        #search-input:focus {
+            outline: none;
+            border-color: #0074d9;
+        }
+
+        button[type="submit"] {
+            font-size: 1.2rem;
+            padding: 0.5rem 1rem;
+            background-color: #0074d9;
+            color: #fff;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #0063ad;
+        }
+
+        #search-results {
+            margin-bottom: 2rem;
+        }
+
+        .result-item {
+            margin-bottom: 1rem;
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            margin-top: 0;
+        }
+
+        .result-link {
+            display: block;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: #0074d9;
+        }
+
+        .result-link:hover {
+            text-decoration: underline;
+        }
+
+        .result-snippet {
+            margin-top: 0;
+        }
+
+        .spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            height: 10rem;
+        }
+
+        /* Dark theme */
+        .header-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #theme-toggler {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            border: 2px solid #ccc;
+            cursor: pointer;
+            background: #fff;
+            padding: 10px 20px;
+            border-radius: 100px;
+        }
+
+        .dark-theme {
+            background-color: #282c34;
+            color: #fff;
+        }
+
+        .dark-theme #search-input {
+            background-color: #454545;
+            color: #fff;
+            border-color: #fff;
+        }
+
+        .dark-theme #search-input:focus {
+            border-color: #0074d9;
+        }
+
+        .dark-theme button[type="submit"] {
+            background-color: #0074d9;
+        }
+
+        .dark-theme .result-link,
+        .dark-theme .result-link:hover {
+            color: #90caf9;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-container">
+            <h1>Wikipedia Clone</h1>
+            <span id="theme-toggler">Light</span>
+        </div>
+  
+        <form id="search-form">
+            <input type="text" id="search-input" placeholder="Enter search term" />
+            <button type="submit">Search</button>
+        </form>
+  
+        <div id="search-results"></div>
+    </div>
+
+    <script>
+        const searchForm = document.getElementById("search-form");
+        const searchInput = document.getElementById("search-input");
+        const searchResults = document.getElementById("search-results");
+
+        // Theme toggler elements
+        const themeToggler = document.getElementById("theme-toggler");
+        const body = document.body;
+
+        async function searchWikipeida(query) {
+            const encodedQuery = encodeURIComponent(query);
+            const endpoint = `https://en.wikipedia.org/w/api.php?action=query&list=search&prop=info&inprop=url&utf8=&format=json&origin=*&srlimit=10&srsearch=${encodedQuery}`;
+
+            const reponse = await fetch(endpoint);
+
+            if (!reponse.ok) {
+                throw new Error("Faild to fetch search results form wikipedia API.");
+            }
+
+            const json = await reponse.json();
+            return json;
+        }
+
+        function displayResults(results) {
+            // Remove the loading spinner
+            searchResults.innerHTML = "";
+
+            results.forEach((result) => {
+                const url = `https://en.wikipedia.org/?curid=${results.pageid}`;
+                const titleLink = `<a href="${url}" target="_blank" rel="noopener">${result.title} </a>`;
+                const urlLink = `<a href="${url} class="result-link" target="_blank" rel="noopener">${url}</a>`;
+
+                const resultItme = document.createElement("div");
+                resultItme.className = "result-item";
+                resultItme.innerHTML = `
+                    <h3 class="result-title">${titleLink}</h3>
+                    ${urlLink}
+                    <p class="result-snippet">${result.snippet}</p>
+                    `;
+
+                searchResults.appendChild(resultItme);
+            });
+        }
+
+        searchForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const query = searchInput.value.trim();
+
+            if (!query) {
+                searchResults.innerHTML = "<p>Please enter a valid search term. </p>";
+                return;
+            }
+
+            searchResults.innerHTML = "<div class='spinner'>Loading ... </div>";
+
+            try {
+                const results = await searchWikipeida(query);
+
+                if (results.query.searchinfo.totalhits === 0) {
+                searchResults.innerHTML = "<p>No results found. </p>";
+                } else {
+                displayResults(results.query.search);
+                }
+            } catch (error) {
+                console.error(error);
+                searchResults.innerHTML = `<p>An error occured while searching. Please try again later. </p>`;
+            }
+        });
+
+        // Event listener for the theme toggler
+        themeToggler.addEventListener("click", () => {
+            body.classList.toggle("dark-theme");
+            if (body.classList.contains("dark-theme")) {
+                themeToggler.textContent = "Dark";
+                themeToggler.style.background = "#fff";
+                themeToggler.style.color = "#333";
+            } else {
+                themeToggler.textContent = "Light";
+                themeToggler.style.border = "2px solid #ccc";
+                themeToggler.style.color = "#333";
+            }
+        });
+
+    </script>
+</body>
+</html>
